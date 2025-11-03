@@ -27,25 +27,29 @@ pipeline {
 
         stage('Run E2E Tests') {
             steps {
-                echo 'Starting React app in background and running E2E tests...'
-                
-                // CRITICAL: Create the output directory to guarantee a known file location
-                echo "Creating report directory: test-results"
-                bat 'mkdir test-results' 
-                
-                // 1. Start the React App in the background
-                bat 'start /B npm start' 
-                
-                // 2. Use 'ping' to reliably wait for 15 seconds for server startup
-                echo 'Waiting 15 seconds for React Dev Server to fully start...'
-                bat 'ping 127.0.0.1 -n 15 > nul'
-                
-                // 3. Use the explicit relative path via the REPORT_PATH variable. 
-                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
-                
-                // 4. Synchronization Fix: Add a short delay to ensure the file system flushes the report.xml completely.
-                echo 'Pausing 5 seconds to allow report.xml to fully flush to disk...'
-                bat 'ping 127.0.0.1 -n 5 > nul'
+                script {
+                    echo 'Starting React app in background and running E2E tests...'
+                    
+                    // CRITICAL FIX: Ensure the report directory is CLEAN before starting tests.
+                    echo "Cleaning and re-creating report directory: test-results"
+                    bat 'if exist test-results rmdir /s /q test-results'
+                    bat 'mkdir test-results' 
+                    
+                    // 1. Start the React App in the background
+                    echo 'Starting React application...'
+                    bat 'start /B npm start' 
+                    
+                    // 2. Use 'ping' to reliably wait for 15 seconds for server startup
+                    echo 'Waiting 15 seconds for React Dev Server to fully start...'
+                    bat 'ping 127.0.0.1 -n 15 > nul'
+                    
+                    // 3. Run tests, directing output to the clean directory
+                    bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
+                    
+                    // 4. Synchronization Fix: Add a short delay to ensure the file system flushes the report.xml completely.
+                    echo 'Pausing 5 seconds to allow report.xml to fully flush to disk...'
+                    bat 'ping 127.0.0.1 -n 5 > nul'
+                }
             }
             failFast true 
         }
@@ -54,13 +58,13 @@ pipeline {
             steps {
                 script {
                     echo "--- DEBUG: Listing contents of 'test-results' before publishing ---"
-                    // This command will print the file path to the log, confirming its existence
+                    // This command confirms file existence, which is good debugging data
                     bat 'dir test-results' 
                     
-                    echo "Publishing Mocha Test Results from: test-results/*.xml..."
-                    // REVERT FIX: Back to the standard path-based publishing using a wildcard, 
-                    // as the content method failed due to plugin incompatibility.
-                    junit 'test-results/*.xml'
+                    echo "Publishing Mocha Test Results using recursive wildcard search: **/*.xml..."
+                    // FINAL ATTEMPT: Use the most aggressive recursive wildcard search (**) 
+                    // to ensure Jenkins finds the file regardless of nested path/agent mapping issues.
+                    junit '**/*.xml'
                 }
             }
         }
