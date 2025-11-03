@@ -53,12 +53,14 @@ pipeline {
         stage('Publish Results') {
             steps {
                 script {
-                    echo "Reading and publishing Mocha Test Results by content (bypassing path issues)..."
-                    // Step 1: Read the content of the XML file into a variable.
-                    def reportContent = readFile(file: env.REPORT_PATH)
+                    echo "--- DEBUG: Listing contents of 'test-results' before publishing ---"
+                    // This command will print the file path to the log, confirming its existence
+                    bat 'dir test-results' 
                     
-                    // Step 2: Pass the content directly to the Junit publisher.
-                    junit(testResultsContent: reportContent)
+                    echo "Publishing Mocha Test Results from: test-results/*.xml..."
+                    // REVERT FIX: Back to the standard path-based publishing using a wildcard, 
+                    // as the content method failed due to plugin incompatibility.
+                    junit 'test-results/*.xml'
                 }
             }
         }
