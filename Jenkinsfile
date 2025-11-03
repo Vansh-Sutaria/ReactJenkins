@@ -9,7 +9,7 @@ pipeline {
 
     tools {
         // Use the name you configured in Jenkins (e.g., 'NODE_18' or 'NODE_VERSION')
-        nodejs "${NODE_VERSION}"
+        nodejs "NodeJS"
     }
 
     stages {
