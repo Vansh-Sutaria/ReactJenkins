@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     environment {
-        // Defines the filename relative to the workspace
-        REPORT_PATH = 'report.xml'
+        // Defines a specific, unique subdirectory for the report
+        REPORT_PATH = 'test-results/report.xml'
     }
 
     tools {
@@ -29,6 +29,10 @@ pipeline {
             steps {
                 echo 'Starting React app in background and running E2E tests...'
                 
+                // CRITICAL: Create the output directory to guarantee a known file location
+                echo "Creating report directory: test-results"
+                bat 'mkdir test-results' 
+                
                 // 1. Start the React App in the background
                 bat 'start /B npm start' 
                 
@@ -36,10 +40,10 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. Use the simple relative path for mochaFile. 
+                // 3. Use the explicit relative path via the REPORT_PATH variable. 
                 bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
                 
-                // 4. CRITICAL FIX: Add a short delay to ensure the file system flushes the report.xml completely.
+                // 4. Synchronization Fix: Add a short delay to ensure the file system flushes the report.xml completely.
                 echo 'Pausing 5 seconds to allow report.xml to fully flush to disk...'
                 bat 'ping 127.0.0.1 -n 5 > nul'
             }
@@ -48,9 +52,9 @@ pipeline {
 
         stage('Publish Results') {
             steps {
-                echo 'Publishing Mocha Test Results...'
-                // The Junit step uses a glob pattern (**) to search the entire workspace recursively for the file.
-                junit '**/report.xml'
+                echo "Publishing Mocha Test Results from: ${REPORT_PATH}..."
+                // Now, use the explicit path, which is relative to the workspace root.
+                junit "${REPORT_PATH}" 
             }
         }
     }
