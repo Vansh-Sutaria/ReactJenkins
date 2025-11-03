@@ -36,8 +36,7 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. FINAL FILE PATH FIX: Use a simple relative path for mochaFile. 
-                // This removes all path-parsing ambiguities caused by complex Windows absolute paths.
+                // 3. Use a simple relative path for mochaFile. 
                 bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
             }
             failFast true 
@@ -45,6 +44,11 @@ pipeline {
 
         stage('Publish Results') {
             steps {
+                echo '--- DEBUG: Listing all files in workspace to find report.xml ---'
+                // This command recursively lists files and will output the exact location of the report.
+                bat 'dir /s /b'
+                echo '----------------------------------------------------------------'
+                
                 echo 'Publishing Mocha Test Results...'
                 // The Junit step uses a glob pattern (**) to search the entire workspace recursively for the file.
                 junit '**/report.xml'
