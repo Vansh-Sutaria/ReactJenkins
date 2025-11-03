@@ -52,9 +52,10 @@ pipeline {
 
         stage('Publish Results') {
             steps {
-                echo "Publishing Mocha Test Results from: ${REPORT_PATH}..."
-                // Now, use the explicit path, which is relative to the workspace root.
-                junit "${REPORT_PATH}" 
+                echo "Publishing Mocha Test Results using wildcard pattern in test-results folder..."
+                // FIX: Use a wildcard pattern to ensure the Jenkins path resolver successfully finds the file
+                // within the known subdirectory.
+                junit 'test-results/*.xml'
             }
         }
     }
