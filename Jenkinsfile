@@ -36,9 +36,9 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. Keep the absolute path fix which correctly formats the path string for Node/Mocha
-                // Output: mochaFile=C:/.../report.xml
-                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${WORKSPACE.replaceAll('\\\\', '/')}/${REPORT_PATH}"
+                // 3. FINAL FILE PATH FIX: Use a simple relative path for mochaFile. 
+                // This removes all path-parsing ambiguities caused by complex Windows absolute paths.
+                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
             }
             failFast true 
         }
@@ -46,9 +46,7 @@ pipeline {
         stage('Publish Results') {
             steps {
                 echo 'Publishing Mocha Test Results...'
-                // CRITICAL FIX: Use a glob pattern (**) to search the entire workspace recursively for the report.xml file.
-                // This accounts for the possibility that the file is being written to a subdirectory 
-                // (like 'test/' or 'my-react-app/test/') instead of the root workspace.
+                // The Junit step uses a glob pattern (**) to search the entire workspace recursively for the file.
                 junit '**/report.xml'
             }
         }
