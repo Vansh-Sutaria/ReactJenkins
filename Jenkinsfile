@@ -36,10 +36,9 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. CRITICAL FINAL FIX: Use the full $WORKSPACE path to ensure report.xml is created 
-                // in the Jenkins workspace root, regardless of the shell's current working directory.
-                // We use double quotes to allow Groovy to interpolate the ${...} variables.
-                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile='${WORKSPACE}/${REPORT_PATH}'"
+                // 3. FINAL FIX: Convert $WORKSPACE path (which uses \ on Windows) to Unix-style / path 
+                // for Node.js compatibility, and remove single quotes which were causing shell errors.
+                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${WORKSPACE.replaceAll('\\\\', '/')}/${REPORT_PATH}"
             }
             failFast true 
         }
