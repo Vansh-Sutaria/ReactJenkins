@@ -36,8 +36,8 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. FINAL FIX: Convert $WORKSPACE path (which uses \ on Windows) to Unix-style / path 
-                // for Node.js compatibility, and remove single quotes which were causing shell errors.
+                // 3. Keep the absolute path fix which correctly formats the path string for Node/Mocha
+                // Output: mochaFile=C:/.../report.xml
                 bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${WORKSPACE.replaceAll('\\\\', '/')}/${REPORT_PATH}"
             }
             failFast true 
@@ -46,8 +46,10 @@ pipeline {
         stage('Publish Results') {
             steps {
                 echo 'Publishing Mocha Test Results...'
-                // This step will now find the file at the expected location
-                junit "${REPORT_PATH}"
+                // CRITICAL FIX: Use a glob pattern (**) to search the entire workspace recursively for the report.xml file.
+                // This accounts for the possibility that the file is being written to a subdirectory 
+                // (like 'test/' or 'my-react-app/test/') instead of the root workspace.
+                junit '**/report.xml'
             }
         }
     }
