@@ -82,14 +82,12 @@ pipeline {
     agent any
     
     environment {
-        // This is no longer strictly necessary since the tools block handles installation, 
-        // but it doesn't hurt to keep it for documentation if you prefer to specify a version.
-        NODE_VERSION = '18'
+        // This is still needed to provide the filename to the junit step
         REPORT_PATH = 'report.xml'
     }
 
     tools {
-        // Using the exact name 'NodeJS' that you configured in Jenkins Global Tool Configuration
+        // Using the exact name 'NodeJS' that you configured
         nodejs 'NodeJS' 
     }
 
@@ -115,21 +113,21 @@ pipeline {
                 // 1. Start the React App in the background
                 bat 'start /B npm start' 
                 
-                // 2. FIXED: Use 'ping' to reliably wait for 15 seconds (14 pings + initial wait). 
-                // This replaces the unreliable 'timeout' command.
+                // 2. Use 'ping' to reliably wait for 15 seconds
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. Run the E2E Tests
-                bat 'npm test' 
+                // 3. CRITICAL FIX: Run Mocha directly, passing all reporter options explicitly.
+                // This ensures mocha-junit-reporter creates the report.xml file.
+                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=${REPORT_PATH}"
             }
-            // This is critical: if tests fail, it skips the Publish stage and jumps to post-actions (cleanup)
             failFast true 
         }
 
         stage('Publish Results') {
             steps {
                 echo 'Publishing Mocha Test Results...'
+                // This step will now find the report.xml file
                 junit "${REPORT_PATH}"
             }
         }
@@ -139,7 +137,7 @@ pipeline {
         always {
             script {
                 echo 'Attempting to stop the background React server...'
-                // This is the correct, robust Windows command to find the PID using port 3000 and force-kill it.
+                // Robust command to find and kill the process using port 3000
                 bat 'for /f "tokens=5" %%a in (\'netstat -ano ^| findstr :3000\') do taskkill /PID %%a /F || true'
                 cleanWs()
             }
@@ -152,3 +150,4 @@ pipeline {
         }
     }
 }
+
