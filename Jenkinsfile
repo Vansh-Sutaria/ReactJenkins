@@ -2,12 +2,11 @@ pipeline {
     agent any
     
     environment {
-        // This is still needed to provide the filename to the junit step
+        // Defines the filename relative to the workspace
         REPORT_PATH = 'report.xml'
     }
 
     tools {
-        // Using the exact name 'NodeJS' that you configured
         nodejs 'NodeJS' 
     }
 
@@ -37,9 +36,10 @@ pipeline {
                 echo 'Waiting 15 seconds for React Dev Server to fully start...'
                 bat 'ping 127.0.0.1 -n 15 > nul'
                 
-                // 3. CRITICAL FINAL FIX: Running Mocha with Windows-native environment variable expansion (%REPORT_PATH%)
-                // The report file should now generate successfully in the root workspace directory.
-                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile=%REPORT_PATH%"
+                // 3. CRITICAL FINAL FIX: Use the full $WORKSPACE path to ensure report.xml is created 
+                // in the Jenkins workspace root, regardless of the shell's current working directory.
+                // We use double quotes to allow Groovy to interpolate the ${...} variables.
+                bat "npm run test -- --timeout 15000 --reporter mocha-junit-reporter --reporter-options mochaFile='${WORKSPACE}/${REPORT_PATH}'"
             }
             failFast true 
         }
@@ -47,7 +47,7 @@ pipeline {
         stage('Publish Results') {
             steps {
                 echo 'Publishing Mocha Test Results...'
-                // This step will now find the report.xml file
+                // This step will now find the file at the expected location
                 junit "${REPORT_PATH}"
             }
         }
@@ -58,7 +58,6 @@ pipeline {
             script {
                 echo 'Attempting to stop the background React server...'
                 // Robust command to find and kill the process using port 3000
-                // Note: The variable %%a is necessary for Windows Batch FOR loops within a Jenkins bat step.
                 bat 'for /f "tokens=5" %%a in (\'netstat -ano ^| findstr :3000\') do taskkill /PID %%a /F || true'
                 cleanWs()
             }
