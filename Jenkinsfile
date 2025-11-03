@@ -52,10 +52,14 @@ pipeline {
 
         stage('Publish Results') {
             steps {
-                echo "Publishing Mocha Test Results using wildcard pattern in test-results folder..."
-                // FIX: Use a wildcard pattern to ensure the Jenkins path resolver successfully finds the file
-                // within the known subdirectory.
-                junit 'test-results/*.xml'
+                script {
+                    echo "Reading and publishing Mocha Test Results by content (bypassing path issues)..."
+                    // Step 1: Read the content of the XML file into a variable.
+                    def reportContent = readFile(file: env.REPORT_PATH)
+                    
+                    // Step 2: Pass the content directly to the Junit publisher.
+                    junit(testResultsContent: reportContent)
+                }
             }
         }
     }
